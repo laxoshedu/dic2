@@ -194,7 +194,6 @@
 </div>
 
 <script>
-    // Paste your deployed Google Apps Script URL within the quotes below
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyzuaL-qtEAE3KC4mCt4TlZk_nqfe262TE8_U33SOOHkM_NHAxipTPCKWm_kWzEhtqP/exec";
 
     let currentLanguage = 'en';
@@ -233,7 +232,8 @@
     }
 
     function handleInput(val) {
-        const cleaned = val.trim().toLowerCase();
+        // Remove leading spaces, but preserve inside text spaces for phrases
+        const cleaned = val.toLowerCase().replace(/^\s+/, ''); 
         const suggBox = document.getElementById('suggestions');
         
         if (cleaned.length === 0) {
@@ -250,7 +250,10 @@
                 return;
             }
 
-            const matches = Object.keys(dictionaryData).filter(word => word.startsWith(cleaned)).slice(0, 5);
+            // Clean keys up to match input precisely with internal text items
+            const matches = Object.keys(dictionaryData).filter(word => {
+                return word.toLowerCase().startsWith(cleaned);
+            }).slice(0, 5);
             
             if (matches.length > 0) {
                 suggBox.innerHTML = matches.map(word => `<div class="suggestion-item" onclick="selectWord('${word}')">${word}</div>`).join('');
@@ -360,7 +363,6 @@
         if (event.key === "Enter") executeSearch();
     }
 
-    // --- Dynamic Network Synchronization Pipeline ---
     function dispatchMissingWord(word) {
         if (navigator.onLine) {
             transmitPayload(word);
