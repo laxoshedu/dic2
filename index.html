@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Local Dictionary</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .dictionary-container {
+            background-color: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            border: 2px solid #dee2e6;
+        }
+        h1 {
+            color: #333;
+            margin: 0 0 10px 0;
+            text-align: center;
+            font-size: 26px;
+        }
+        .toggle-box {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .toggle-btn {
+            padding: 6px 12px;
+            border: 2px solid #007bff;
+            background-color: white;
+            color: #007bff;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .toggle-btn.active {
+            background-color: #007bff;
+            color: white;
+        }
+        .search-area {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        .search-box {
+            display: flex;
+            gap: 10px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            outline: none;
+        }
+        input[type="text"]:focus { border-color: #007bff; }
+        button.search-btn {
+            padding: 12px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .suggestions-box {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: none;
+        }
+        .suggestion-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f1f1;
+        }
+        .suggestion-item:hover { background-color: #f8f9fa; }
+        
+        .result-box {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            border-radius: 6px;
+            background-color: #f9f9f9;
+            border: 1px solid #e2e8f0;
+            border-left: 5px solid #28a745;
+        }
+        .word-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .word-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+            text-transform: capitalize;
+        }
+        .pos-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 4px;
+            color: white;
+            background-color: #ff9800;
+            text-transform: uppercase;
+        }
+        .speaker-btn {
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            padding: 0;
+            margin-left: auto;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #333;
+            margin-top: 12px;
+            margin-bottom: 4px;
+            font-size: 15px;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 2px;
+        }
+        .section-content {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 8px;
+            padding-left: 5px;
+        }
+        .lang-text {
+            display: block;
+            font-size: 13px;
+            color: #6c757d;
+            font-style: italic;
+            margin-top: 2px;
+        }
+        .error { color: #dc3545; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="dictionary-container">
+    <h1>My Dictionary</h1>
+    
+    <div class="toggle-box">
+        <button id="btn-en" class="toggle-btn active" onclick="setLanguage('en')">English Only</button>
+        <button id="btn-te" class="toggle-btn" onclick="setLanguage('te')">English → Telugu</button>
+        <button id="btn-hi" class="toggle-btn" onclick="setLanguage('hi')">English → Hindi</button>
+    </div>
+    
+    <div class="search-area">
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="Search a word..." oninput="handleInput(this.value)" onkeypress="handleKeyPress(event)">
+            <button class="search-btn" onclick="executeSearch()">Search</button>
+        </div>
+        <div id="suggestions" class="suggestions-box"></div>
+    </div>
+
+    <div class="result-box" id="result-box">
+        <div style="color: #888; text-align: center; margin-top: 20px;">Type to see immediate suggestions or search.</div>
+    </div>
+</div>
+
+<script>
+    // Paste your deployed Google Apps Script URL within the quotes below
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyzuaL-qtEAE3KC4mCt4TlZk_nqfe262TE8_U33SOOHkM_NHAxipTPCKWm_kWzEhtqP/exec";
+
+    let currentLanguage = 'en';
+    let loadedLetter = '';
+
+    function setLanguage(lang) {
+        currentLanguage = lang;
+        document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`btn-${lang}`).classList.add('active');
+        executeSearch();
+    }
+
+    function loadLetterFile(letter, callback) {
+        if (loadedLetter === letter) {
+            callback();
+            return;
+        }
+        
+        const oldScript = document.getElementById('dynamic-words-script');
+        if (oldScript) oldScript.remove();
+
+        window.dictionaryData = undefined;
+
+        const script = document.createElement('script');
+        script.id = 'dynamic-words-script';
+        script.src = `./${letter}words.js`;
+        script.onload = () => {
+            loadedLetter = letter;
+            callback();
+        };
+        script.onerror = () => {
+            document.getElementById('suggestions').style.display = 'none';
+            callback(); 
+        };
+        document.body.appendChild(script);
+    }
+
+    function handleInput(val) {
+        const cleaned = val.trim().toLowerCase();
+        const suggBox = document.getElementById('suggestions');
+        
+        if (cleaned.length === 0) {
+            suggBox.style.display = 'none';
+            return;
+        }
+
+        const firstLetter = cleaned.charAt(0);
+        if (!/[a-z]/.test(firstLetter)) return;
+
+        loadLetterFile(firstLetter, () => {
+            if (typeof dictionaryData === 'undefined') {
+                suggBox.style.display = 'none';
+                return;
+            }
+
+            const matches = Object.keys(dictionaryData).filter(word => word.startsWith(cleaned)).slice(0, 5);
+            
+            if (matches.length > 0) {
+                suggBox.innerHTML = matches.map(word => `<div class="suggestion-item" onclick="selectWord('${word}')">${word}</div>`).join('');
+                suggBox.style.display = 'block';
+            } else {
+                suggBox.style.display = 'none';
+            }
+        });
+    }
+
+    function selectWord(word) {
+        document.getElementById('search-input').value = word;
+        document.getElementById('suggestions').style.display = 'none';
+        executeSearch();
+    }
+
+    function executeSearch() {
+        const inputVal = document.getElementById('search-input').value.trim().toLowerCase();
+        const resultBox = document.getElementById('result-box');
+        document.getElementById('suggestions').style.display = 'none';
+
+        if (inputVal === "") return;
+
+        const firstLetter = inputVal.charAt(0);
+        
+        if (!/[a-z]/.test(firstLetter)) {
+            resultBox.innerHTML = `<div class="error">Please enter a valid alphabet-based term.</div>`;
+            return;
+        }
+
+        loadLetterFile(firstLetter, () => {
+            if (typeof dictionaryData === 'undefined' || !dictionaryData.hasOwnProperty(inputVal)) {
+                resultBox.innerHTML = `<div class="error">Word "${inputVal}" was not found locally. Logging query to server backend...</div>`;
+                dispatchMissingWord(inputVal);
+                return;
+            }
+
+            const data = dictionaryData[inputVal];
+            renderWordCard(inputVal, data);
+        });
+    }
+
+    function renderWordCard(word, data) {
+        const resultBox = document.getElementById('result-box');
+        
+        let currentPos = data.pos.en;
+        let defSimple = data.definition.simple.en;
+        let defElab = data.definition.elaborated.en;
+        let syns = data.synonyms.en.join(', ');
+        let ants = data.antonyms.en.join(', ');
+        let examples = data.examples.en.map(ex => `<li>${ex}</li>`).join('');
+
+        if (currentLanguage === 'te') {
+            currentPos = data.pos.te || data.pos.en;
+            defSimple += `<span class="lang-text">తెలుగు: ${data.definition.simple.te}</span>`;
+            defElab += `<span class="lang-text">తెలుగు: ${data.definition.elaborated.te}</span>`;
+            syns += `<span class="lang-text">తెలుగు: ${data.synonyms.te.join(', ')}</span>`;
+            ants += `<span class="lang-text">తెలుగు: ${data.antonyms.te.join(', ')}</span>`;
+            examples = data.examples.en.map((ex, idx) => `<li>${ex}<span class="lang-text">తెలుగు: ${data.examples.te[idx]}</span></li>`).join('');
+        } else if (currentLanguage === 'hi') {
+            currentPos = data.pos.hi || data.pos.en;
+            defSimple += `<span class="lang-text">हिंदी: ${data.definition.simple.hi}</span>`;
+            defElab += `<span class="lang-text">हिंदी: ${data.definition.elaborated.hi}</span>`;
+            syns += `<span class="lang-text">हिंदी: ${data.synonyms.hi.join(', ')}</span>`;
+            ants += `<span class="lang-text">हिंदी: ${data.antonyms.hi.join(', ')}</span>`;
+            examples = data.examples.en.map((ex, idx) => `<li>${ex}<span class="lang-text">हिंदी: ${data.examples.hi[idx]}</span></li>`).join('');
+        }
+
+        resultBox.innerHTML = `
+            <div class="word-header">
+                <div class="word-title">${word}</div>
+                <span class="pos-badge">${currentPos}</span>
+                <button class="speaker-btn" onclick="speakText('${word}')">🔊</button>
+            </div>
+            
+            <div class="section-title">Simple Definition</div>
+            <div class="section-content">${defSimple}</div>
+            
+            <div class="section-title">Elaborated Definition</div>
+            <div class="section-content">${defElab}</div>
+            
+            <div class="section-title">Synonyms</div>
+            <div class="section-content">${syns}</div>
+            
+            <div class="section-title">Antonyms</div>
+            <div class="section-content">${ants}</div>
+            
+            <div class="section-title">Example Sentences</div>
+            <div class="section-content">
+                <ul style="margin: 0; padding-left: 20px;">${examples}</ul>
+            </div>
+        `;
+        resultBox.scrollTop = 0; 
+    }
+
+    function speakText(text) {
+        if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            window.speechSynthesis.speak(utterance);
+        } else {
+            alert("TTS engine execution is not supported on this device platform.");
+        }
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === "Enter") executeSearch();
+    }
+
+    // --- Dynamic Network Synchronization Pipeline ---
+    function dispatchMissingWord(word) {
+        if (navigator.onLine) {
+            transmitPayload(word);
+        } else {
+            cacheOfflineQueue(word);
+        }
+    }
+
+    function transmitPayload(word) {
+        if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.startsWith("PASTE_")) return;
+        let guessPos = word.includes(" ") ? "Phrase / Idiom Candidate" : "Lexicon / Word Candidate";
+        fetch(APPS_SCRIPT_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ word: word, pos: guessPos })
+        })
+        .then(() => console.log(`Logged missing word: ${word}`))
+        .catch(() => cacheOfflineQueue(word));
+    }
+
+    function cacheOfflineQueue(word) {
+        let queue = JSON.parse(localStorage.getItem("offlineMissingWords")) || [];
+        if (!queue.includes(word)) {
+            queue.push(word);
+            localStorage.setItem("offlineMissingWords", JSON.stringify(queue));
+        }
+    }
+
+    function flushOfflineQueue() {
+        let queue = JSON.parse(localStorage.getItem("offlineMissingWords")) || [];
+        if (queue.length === 0) return;
+        queue.forEach(word => transmitPayload(word));
+        localStorage.removeItem("offlineMissingWords");
+    }
+
+    window.addEventListener('online', flushOfflineQueue);
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.search-area')) {
+            document.getElementById('suggestions').style.display = 'none';
+        }
+    });
+</script>
+
+</body>
+</html>
